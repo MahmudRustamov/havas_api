@@ -1,6 +1,11 @@
 from datetime import timedelta
 from django.utils import timezone
-from rest_framework import serializers
+from rest_framework import serializers, generics, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from apps.users.models.user import User, VerificationCode
 from apps.users.utils.code_generators import (
     generate_unique_username,
@@ -90,8 +95,14 @@ class RequestLoginCodeSerializer(serializers.Serializer):
 
     @staticmethod
     def validate_email(value):
-        if not User.objects.filter(email=value).exists():
+        try:
+            user = User.objects.get(email=value)
+        except User.DoesNotExist:
             raise serializers.ValidationError("User with this email does not exist.")
+
+        if not user.is_active:
+            raise serializers.ValidationError("Please verify your email before logging in.")
+
         return value
 
     def create(self, validated_data):
@@ -112,15 +123,42 @@ class VerifyLoginCodeSerializer(serializers.Serializer):
 
         try:
             user = User.objects.get(email=email)
-            vcode = VerificationCode.objects.filter(user=user, code=code).latest("created_at")
-        except (User.DoesNotExist, VerificationCode.DoesNotExist):
-            raise serializers.ValidationError("Invalid email or code.")
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User not found.")
+
+        # 🔥 Email verify qilinmagan user login qila olmaydi
+        if not user.is_active:
+            raise serializers.ValidationError("Email not verified. Please verify before logging in.")
+
+        try:
+            vcode = VerificationCode.objects.filter(
+                user=user, code=code, used=False
+            ).latest("created_at")
+        except VerificationCode.DoesNotExist:
+            raise serializers.ValidationError("Invalid or expired code.")
 
         if (timezone.now() - vcode.created_at) > timedelta(minutes=15):
             raise serializers.ValidationError("Verification code expired.")
 
-        if vcode.used:
-            raise serializers.ValidationError("This code has already been used.")
+        vcode.used = True
+        vcode.save()
 
         attrs["user"] = user
         return attrs
+
+
+class LogoutAPIView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            refresh_token = request.data.get("refresh")
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            return Response({"detail": "Successfully logged out."}, status=status.HTTP_205_RESET_CONTENT)
+
+        except TokenError:
+            return Response({"error": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response({"error": "Something went wrong."}, status=status.HTTP_400_BAD_REQUEST)

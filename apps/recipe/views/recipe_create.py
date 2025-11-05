@@ -5,7 +5,9 @@ from rest_framework.exceptions import PermissionDenied
 
 from apps.recipe.models import RecipeModel, RecipeIngredient
 from apps.recipe.serializers.recipe_detail import RecipeDetailSerializer
-from apps.recipe.serializers.recipe_list_create import RecipeCreateSerializer, RecipeIngredientWriteSerializer
+from apps.recipe.serializers.recipe_list_create import RecipeCreateSerializer, RecipeIngredientWriteSerializer, \
+    RecipeListSerializer
+from apps.shared.permissions.mobile import IsMobileOrWebUser
 from apps.shared.utils.custom_response import CustomResponse
 
 
@@ -13,6 +15,15 @@ class RecipeListCreateAPIView(ListCreateAPIView):
     queryset = RecipeModel.objects.all()
     serializer_class = RecipeCreateSerializer
     permission_classes = [IsAuthenticated]
+
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return RecipeCreateSerializer
+        elif self.request.method == "GET" and self.request.device_type == "WEB":
+            return RecipeListSerializer
+        else:
+            return RecipeDetailSerializer
 
     def create(self, request, *args, **kwargs):
         if not request.user.is_superuser:
@@ -29,6 +40,27 @@ class RecipeListCreateAPIView(ListCreateAPIView):
         return CustomResponse.error(
             message_key="VALIDATION_ERROR",
             errors=serializer.errors
+        )
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset().order_by('-id'))
+        print(request.lang, request.device_type, "********")
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return CustomResponse.success(
+                message_key="SUCCESS_MESSAGE",
+                data=serializer.data,
+                status_code=status.HTTP_200_OK,
+                request=request
+            )
+
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        return CustomResponse.success(
+            message_key="SUCCESS_MESSAGE",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+            request=request
         )
 
 

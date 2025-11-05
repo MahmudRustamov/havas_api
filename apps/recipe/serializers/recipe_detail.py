@@ -14,3 +14,5 @@ class RecipeDetailSerializer(RecipeTranslationMixin,TranslatedFieldsReadMixin,se
             'id', 'title', 'description', 'image', 'video_url',
             'steps', 'cook_time', 'calories', 'rating', 'ingredients'
         ]
+
+

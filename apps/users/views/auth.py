@@ -19,6 +19,7 @@ class RegisterView(generics.CreateAPIView):
 
 
 class VerifyEmailAPIView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
     @staticmethod
     def post(request):
         email = request.data.get('email')

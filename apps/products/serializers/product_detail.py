@@ -1,9 +1,12 @@
 from rest_framework import serializers
 from apps.products.models import ProductsModel
+from apps.products.serializers.product_create import ProductTranslationMixin
+from apps.shared.mixins.translation_mixins import TranslatedFieldsReadMixin
 
 
-class ProductDetailSerializer(serializers.ModelSerializer):
+class ProductDetailSerializer(ProductTranslationMixin, TranslatedFieldsReadMixin, serializers.ModelSerializer):
     class Meta:
         model = ProductsModel
-        exclude = ['created_at', 'updated_at', 'uuid']
-        read_only_fields = ['real_price']
+        fields = ['id', 'uuid', 'title', 'description',
+                  'price', 'real_price', 'measurement',
+                  'created_at', 'is_active', 'category', 'discount']

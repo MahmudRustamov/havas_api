@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from apps.products.models import ProductsModel
 from apps.shared.models import BaseModel
@@ -6,6 +7,7 @@ from apps.shared.models import BaseModel
 class RecipeModel(BaseModel):
     title = models.CharField(max_length=255)
     description = models.TextField()
+    media_files = GenericRelation('shared.Media',related_query_name='recipes')
     image = models.ImageField(upload_to='recipes/', blank=True, null=True)
     video_url = models.URLField(blank=True, null=True)
     steps = models.TextField()

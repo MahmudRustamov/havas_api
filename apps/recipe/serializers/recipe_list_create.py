@@ -32,7 +32,7 @@ class RecipeCreateSerializer(TranslatedFieldsWriteMixin,serializers.ModelSeriali
     class Meta:
         model = RecipeModel
         fields = [
-            'id', 'title', 'description', 'image', 'video_url',
+            'id', 'title_en', 'title_uz', 'description_uz', 'description_en', 'image', 'video_url',
             'steps', 'cook_time', 'calories', 'rating', 'ingredients'
         ]
 
@@ -58,3 +58,8 @@ class RecipeCreateSerializer(TranslatedFieldsWriteMixin,serializers.ModelSeriali
             )
 
         return recipe
+
+class RecipeListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecipeModel
+        exclude = ['title', 'description']
